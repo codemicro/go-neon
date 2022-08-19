@@ -1,6 +1,7 @@
 package tc
 
 import (
+	"errors"
 	"fmt"
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/parse"
@@ -61,13 +62,18 @@ func RunOnDirectory(directory string) error {
 	}
 
 	// generate typechecking package
-	_, err = DetermineSubstitutionTypes(modulePath+"/"+filepath.ToSlash(requiredPathTranslation), directory, files)
+	subsitutionTypes, err := DetermineSubstitutionTypes(modulePath+"/"+filepath.ToSlash(requiredPathTranslation), directory, files)
 	if err != nil {
 		return err
 	}
 
 	// generate output code
-	if err := OutputGeneratorCode("FIXME", directory, files); err != nil {
+	// TODO: make this not based on $GOPACKAGE
+	gopkg := os.Getenv("GOPACKAGE")
+	if gopkg == "" {
+		return errors.New("$GOPACKAGE empty (did you run this with go generate?)")
+	}
+	if err := OutputGeneratorCode(gopkg, directory, files, subsitutionTypes); err != nil {
 		return err
 	}
 

@@ -96,3 +96,11 @@ func GenerateRandomIdentifier() string {
 	}
 	return string(b)
 }
+
+func GenerateRandomIdentifierWithRand(n *rand.Rand) string {
+	b := make([]rune, 10)
+	for i := range b {
+		b[i] = letterRunes[n.Intn(len(letterRunes))]
+	}
+	return string(b)
+}

@@ -23,7 +23,6 @@ func DetermineSubstitutionTypes(
 	ids := make(map[string]*ast.SubstitutionNode)
 
 	newDirectory := filepath.Join(baseDirectory, "ntc-tc-"+tempPackageName)
-	defer os.RemoveAll(newDirectory)
 	if err := os.MkdirAll(newDirectory, os.ModeDir); err != nil {
 		return nil, err
 	}
@@ -80,6 +79,8 @@ func DetermineSubstitutionTypes(
 			expressionTypes[sdn] = obj.Type()
 		}
 	}
+
+	_ = os.RemoveAll(newDirectory)
 
 	return expressionTypes, nil
 }
