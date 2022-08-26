@@ -2,7 +2,6 @@ package tc
 
 import (
 	"errors"
-	"fmt"
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/parse"
 	"github.com/codemicro/go-neon/neontc/util"
@@ -41,7 +40,6 @@ func RunOnDirectory(directory string) error {
 	// parse those files
 	var files []*ast.TemplateFile
 	for _, de := range dirEntries {
-		fmt.Println(strings.EqualFold(filepath.Ext(de.Name()), ".ntc"), de.Name()+" -> "+filepath.Ext(de.Name()))
 		if de.IsDir() || !strings.EqualFold(filepath.Ext(de.Name()), ".ntc") {
 			continue
 		}
@@ -59,6 +57,10 @@ func RunOnDirectory(directory string) error {
 		}
 
 		files = append(files, tf)
+	}
+
+	if len(files) == 0 {
+		return errors.New("no matching input files")
 	}
 
 	// generate typechecking package

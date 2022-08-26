@@ -45,15 +45,19 @@ func chopToken(token []byte) (opWord, operand []byte) {
 	return
 }
 
+// func File(fs *FileSet, fpath string, input []byte) (*ast.TemplateFile, error) {
 func File(fpath string, input []byte) (*ast.TemplateFile, error) {
 	tf := new(ast.TemplateFile)
 	tf.Filepath = fpath
+
+	// baseFileSetPosition := fs.AddFile(fpath, input)
 
 	tokens, err := tokens(input)
 	if err != nil {
 		return nil, err
 	}
 
+	var i int
 	for token := tokens.Next(); token != nil; token = tokens.Next() {
 
 		if bytes.HasPrefix(token, []byte("{{")) {
@@ -83,6 +87,7 @@ func File(fpath string, input []byte) (*ast.TemplateFile, error) {
 
 		}
 
+		i += len(token)
 	}
 
 	return tf, nil

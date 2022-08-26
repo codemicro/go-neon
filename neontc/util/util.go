@@ -104,3 +104,15 @@ func GenerateRandomIdentifierWithRand(n *rand.Rand) string {
 	}
 	return string(b)
 }
+
+func RandSourceFromString(x string) rand.Source {
+	return rand.NewSource(Int64FromString(x))
+}
+
+func Int64FromString(x string) int64 {
+	var i int64
+	for _, char := range x {
+		i += int64(char)
+	}
+	return i
+}

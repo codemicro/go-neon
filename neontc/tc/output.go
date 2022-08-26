@@ -1,9 +1,9 @@
 package tc
 
 import (
-	"bytes"
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/codegen"
+	"github.com/codemicro/go-neon/neontc/util"
 	"go/format"
 	"go/types"
 	"os"
@@ -20,30 +20,29 @@ func OutputGeneratorCode(
 	for _, templateFile := range files {
 		newFilename := filepath.Join(directory, filepath.Base(templateFile.Filepath)) + ".go"
 
-		sb := new(bytes.Buffer)
-
-		if err := codegen.GenerateHeader(sb, packageName); err != nil {
-			return err
-		}
-
-		if err := codegen.GenerateImports(sb); err != nil {
-			return err
-		}
+		generator := codegen.NewGenerator(
+			util.Int64FromString(filepath.Base(templateFile.Filepath)),
+		)
 
 		for _, childNode := range templateFile.Nodes {
 			switch node := childNode.(type) {
 			case *ast.FuncDeclNode:
-				if err := codegen.GenerateFunction(sb, node, nodeTypes); err != nil {
+				if err := generator.GenerateFunction(node, nodeTypes); err != nil {
 					return err
 				}
 			case *ast.RawCodeNode:
-				if err := codegen.GenerateRawCode(sb, node); err != nil {
+				if err := generator.GenerateRawCode(node); err != nil {
 					return err
 				}
 			}
 		}
 
-		formatted, err := format.Source(sb.Bytes())
+		renderedBytes, err := generator.Render(packageName)
+		if err != nil {
+			return err
+		}
+
+		formatted, err := format.Source(renderedBytes)
 		if err != nil {
 			return err
 		}

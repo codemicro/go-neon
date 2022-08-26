@@ -18,7 +18,6 @@ func DetermineSubstitutionTypes(
 ) (map[*ast.SubstitutionNode]types.Type, error) {
 	tempPackageName := util.GenerateRandomIdentifier()
 	tempModulePath := modulePath + "/ntc-tc-" + tempPackageName
-	_ = tempModulePath
 
 	ids := make(map[string]*ast.SubstitutionNode)
 
@@ -30,19 +29,12 @@ func DetermineSubstitutionTypes(
 	for _, templateFile := range files {
 		newFilename := filepath.Join(newDirectory, filepath.Base(templateFile.Filepath)) + ".go"
 
-		f, err := os.OpenFile(newFilename, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := codegen.GenerateHeader(f, tempPackageName); err != nil {
-			return nil, err
-		}
+		generator := codegen.NewGenerator(4)
 
 		for _, childNode := range templateFile.Nodes {
 			switch node := childNode.(type) {
 			case *ast.FuncDeclNode:
-				additionalIDs, err := codegen.GenerateTypecheckingFunction(f, node)
+				additionalIDs, err := generator.GenerateTypecheckingFunction(node)
 				if err != nil {
 					return nil, err
 				}
@@ -51,10 +43,24 @@ func DetermineSubstitutionTypes(
 					ids[k] = v
 				}
 			case *ast.RawCodeNode:
-				if err := codegen.GenerateRawCode(f, node); err != nil {
+				if err := generator.GenerateRawCode(node); err != nil {
 					return nil, err
 				}
 			}
+		}
+
+		f, err := os.OpenFile(newFilename, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
+
+		renderedBytes, err := generator.Render(tempPackageName)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := f.Write(renderedBytes); err != nil {
+			return nil, err
 		}
 
 		_ = f.Close()
