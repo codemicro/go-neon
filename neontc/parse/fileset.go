@@ -35,22 +35,24 @@ func (fs *FileSet) ResolvePosition(pos int64) string {
 		if pos < fpos {
 			break
 		}
-		if pos > fpos {
-			filename = fname
-		}
+
+		filename = fname
 	}
 
-	var linepos int64
+	var (
+		linepos int64
+		line    = 1
+	)
+
 	for _, lineStart := range fs.Newlines[filename] {
 		if pos < lineStart {
 			break
 		}
-		if pos > lineStart {
-			linepos = lineStart
-		}
+
+		linepos = lineStart
+		line += 1
 	}
 
-	line := linepos - fs.Filenames[filename]
 	col := pos - linepos
 	return fmt.Sprintf("%s:%d:%d", filename, line, col)
 }

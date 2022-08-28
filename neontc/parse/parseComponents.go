@@ -7,12 +7,12 @@ import (
 	"strings"
 )
 
-func parseFuncTokens(tokens *tokenSet) (*ast.FuncDeclNode, error) {
+func parseFuncTokens(fs *FileSet, tokens *tokenSet) (*ast.FuncDeclNode, error) {
 	returnValue := new(ast.FuncDeclNode)
 
 	// TODO: It would be helpful to actually parse the function signature here.
 	token := tokens.Next()
-	opWord, operand := chopToken(token)
+	opWord, operand := chopToken(token.cont)
 	if !bytes.Equal(opWord, []byte("func")) {
 		panic("impossible state: cannot parse a function from something that isn't a function declaration")
 	}
@@ -21,8 +21,8 @@ func parseFuncTokens(tokens *tokenSet) (*ast.FuncDeclNode, error) {
 tokenLoop:
 	for token := tokens.Next(); token != nil; token = tokens.Next() {
 
-		if bytes.HasPrefix(token, []byte("{{")) {
-			opWordB, operandB := chopToken(token)
+		if bytes.HasPrefix(token.cont, []byte("{{")) {
+			opWordB, operandB := chopToken(token.cont)
 			opWord, operand := string(opWordB), string(operandB)
 
 			if operand == "" {
@@ -38,21 +38,20 @@ tokenLoop:
 
 				switch opWord {
 				case "code":
-					codeNode, err := parseCodeToken(token)
+					codeNode, err := parseCodeToken(fs, token)
 					if err != nil {
 						return nil, err
 					}
 					returnValue.ChildNodes = append(returnValue.ChildNodes, codeNode)
 				default:
-					// TODO: error position??
-					return nil, fmt.Errorf("unsupported opword %q inside of function", opWord)
+					return nil, fmt.Errorf("%s: unsupported opword %q inside of function", fs.ResolvePosition(token.pos), opWord)
 				}
 
 			}
 
 		} else {
 			returnValue.ChildNodes = append(returnValue.ChildNodes, &ast.PlaintextNode{
-				Plaintext: string(token),
+				Plaintext: string(token.cont),
 			})
 		}
 
@@ -61,9 +60,9 @@ tokenLoop:
 	return returnValue, nil
 }
 
-func parseCodeToken(token []byte) (*ast.RawCodeNode, error) {
+func parseCodeToken(fs *FileSet, token *rawToken) (*ast.RawCodeNode, error) {
 	returnValue := new(ast.RawCodeNode)
-	opWord, operand := chopToken(token)
+	opWord, operand := chopToken(token.cont)
 	if !bytes.Equal(opWord, []byte("code")) {
 		panic("impossible state: cannot parse a code block from something that isn't a code block")
 	}

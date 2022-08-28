@@ -37,6 +37,8 @@ func RunOnDirectory(directory string) error {
 		return err
 	}
 
+	fset := parse.NewFileSet()
+
 	// parse those files
 	var files []*ast.TemplateFile
 	for _, de := range dirEntries {
@@ -51,7 +53,7 @@ func RunOnDirectory(directory string) error {
 			return err
 		}
 
-		tf, err := parse.File(fullPath, cont)
+		tf, err := parse.File(fset, fullPath, cont)
 		if err != nil {
 			return err
 		}

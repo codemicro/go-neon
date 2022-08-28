@@ -1,4 +1,4 @@
-This is a sample Neon template file
+{{bee}}This is a sample Neon template file
 
 {{ code
 var Pointless = 42
@@ -6,6 +6,8 @@ type PageInputs struct {
 Name string
 }
 }}
+
+       {{ harumba de mallorca }}
 
 {{ func MyPage(inputs *PageInputs) }}
 

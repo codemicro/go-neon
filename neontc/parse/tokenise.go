@@ -2,14 +2,19 @@ package parse
 
 import "fmt"
 
+type rawToken struct {
+	pos  int64
+	cont []byte
+}
+
 type tokenSet struct {
-	tokens    [][]byte
+	tokens    []*rawToken
 	numTokens int
 
 	cursor int
 }
 
-func (t *tokenSet) Next() []byte {
+func (t *tokenSet) Next() *rawToken {
 	if t.cursor+1 == t.numTokens {
 		return nil
 	}
@@ -21,21 +26,21 @@ func (t *tokenSet) Rewind() {
 	t.cursor -= 1
 }
 
-func (t *tokenSet) Peek() []byte {
+func (t *tokenSet) Peek() *rawToken {
 	if t.cursor+1 == t.numTokens {
 		return nil
 	}
 	return t.tokens[t.cursor+1]
 }
 
-func tokens(input []byte) (*tokenSet, error) {
+func tokens(fs *FileSet, positionBase int64, input []byte) (*tokenSet, error) {
 	const (
 		seekStart = iota
 		seekEnd
 	)
 
 	var (
-		output [][]byte
+		output []*rawToken
 
 		stage = seekStart
 		// the first character of the beginning of this segment
@@ -47,10 +52,10 @@ func tokens(input []byte) (*tokenSet, error) {
 		// Opening sequence: {{
 		if b == '{' && getAtIndex(input, i+1) == '{' && getAtIndex(input, i-1) != '\\' {
 			if stage == seekEnd {
-				return nil, fmt.Errorf("new set of opening curlies at position %d when searching for closing curlies", i)
+				return nil, fmt.Errorf("%s: new set of opening curlies when searching for closing curlies", fs.ResolvePosition(positionBase+int64(i)))
 			}
 
-			output = append(output, input[previousPoint:i])
+			output = append(output, &rawToken{positionBase + int64(previousPoint), input[previousPoint:i]})
 			stage = seekEnd
 
 			previousPoint = i
@@ -59,9 +64,9 @@ func tokens(input []byte) (*tokenSet, error) {
 		// Closing sequence: }}
 		if b == '}' && getAtIndex(input, i-1) == '}' && getAtIndex(input, i-2) != '\\' {
 			if stage == seekStart {
-				return nil, fmt.Errorf("new set of closing curlies at position %d when searching for opening curlies", i)
+				return nil, fmt.Errorf("%s: new set of closing curlies when searching for opening curlies", fs.ResolvePosition(positionBase+int64(i-1)))
 			}
-			output = append(output, input[previousPoint:i+1])
+			output = append(output, &rawToken{positionBase + int64(previousPoint), input[previousPoint : i+1]})
 			stage = seekStart
 
 			previousPoint = i + 1
@@ -69,7 +74,7 @@ func tokens(input []byte) (*tokenSet, error) {
 	}
 
 	if stage == seekEnd {
-		return nil, fmt.Errorf("unclosed opening curlies starting at position %d", previousPoint)
+		return nil, fmt.Errorf("%s: unclosed opening curlies", fs.ResolvePosition(positionBase+int64(previousPoint)))
 	}
 
 	// If the input starts or ends with curlies, we will end up with something
@@ -79,10 +84,10 @@ func tokens(input []byte) (*tokenSet, error) {
 	// The checks below should prevent that
 
 	if addition := input[previousPoint:]; len(addition) != 0 {
-		output = append(output, addition)
+		output = append(output, &rawToken{positionBase + int64(previousPoint), addition})
 	}
 
-	if len(output) != 0 && len(output[0]) == 0 {
+	if len(output) != 0 && len(output[0].cont) == 0 {
 		output = output[1:]
 	}
 

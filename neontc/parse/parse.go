@@ -45,49 +45,46 @@ func chopToken(token []byte) (opWord, operand []byte) {
 	return
 }
 
-// func File(fs *FileSet, fpath string, input []byte) (*ast.TemplateFile, error) {
-func File(fpath string, input []byte) (*ast.TemplateFile, error) {
+func File(fs *FileSet, fpath string, input []byte) (*ast.TemplateFile, error) {
 	tf := new(ast.TemplateFile)
 	tf.Filepath = fpath
 
-	// baseFileSetPosition := fs.AddFile(fpath, input)
+	baseFileSetPosition := fs.AddFile(fpath, input)
 
-	tokens, err := tokens(input)
+	tokens, err := tokens(fs, baseFileSetPosition, input)
 	if err != nil {
 		return nil, err
 	}
 
-	var i int
 	for token := tokens.Next(); token != nil; token = tokens.Next() {
 
-		if bytes.HasPrefix(token, []byte("{{")) {
+		if bytes.HasPrefix(token.cont, []byte("{{")) {
 			// curly block
 
-			opWordB, _ := chopToken(token)
+			opWordB, _ := chopToken(token.cont)
 			opWord := string(opWordB)
 
 			switch opWord {
 			case "func":
 				tokens.Rewind()
-				funcDecl, err := parseFuncTokens(tokens)
+				funcDecl, err := parseFuncTokens(fs, tokens)
 				if err != nil {
 					return nil, err
 				}
 				tf.Nodes = append(tf.Nodes, funcDecl)
 			case "code":
-				codeNode, err := parseCodeToken(token)
+				codeNode, err := parseCodeToken(fs, token)
 				if err != nil {
 					return nil, err
 				}
 				tf.Nodes = append(tf.Nodes, codeNode)
 			default:
 				// TODO: error position??
-				return nil, fmt.Errorf("unsupported opword %q inside of function", opWord)
+				return nil, fmt.Errorf("%s: unsupported opword %q", fs.ResolvePosition(token.pos), opWord)
 			}
 
 		}
 
-		i += len(token)
 	}
 
 	return tf, nil
