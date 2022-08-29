@@ -21,32 +21,30 @@ func parseFuncTokens(fs *FileSet, tokens *tokenSet) (*ast.FuncDeclNode, error) {
 tokenLoop:
 	for token := tokens.Next(); token != nil; token = tokens.Next() {
 
-		if bytes.HasPrefix(token.cont, []byte("{{")) {
+		if bytes.HasPrefix(token.cont, []byte("{[")) {
+			// This is a substitution (I hope)
+			returnValue.ChildNodes = append(returnValue.ChildNodes, &ast.SubstitutionNode{
+				Expression: strings.Trim(string(token.cont), " {}[]"),
+			})
+		} else if bytes.HasPrefix(token.cont, []byte("{{")) {
 			opWordB, operandB := chopToken(token.cont)
 			opWord, operand := string(opWordB), string(operandB)
 
-			if operand == "" {
-				if opWord == "endfunc" {
-					break tokenLoop
+			switch opWord {
+			case "endfunc":
+				if operand != "" {
+					return nil, fmt.Errorf("%s: endfunc takes no arguments", fs.ResolvePosition(token.pos))
 				}
-
-				// This is a substitution (I hope)
-				returnValue.ChildNodes = append(returnValue.ChildNodes, &ast.SubstitutionNode{
-					Expression: opWord,
-				})
-			} else {
-
-				switch opWord {
-				case "code":
-					codeNode, err := parseCodeToken(fs, token)
-					if err != nil {
-						return nil, err
-					}
-					returnValue.ChildNodes = append(returnValue.ChildNodes, codeNode)
-				default:
-					return nil, fmt.Errorf("%s: unsupported opword %q inside of function", fs.ResolvePosition(token.pos), opWord)
+				break tokenLoop
+			case "code":
+				tokens.Rewind()
+				codeNode, err := parseCodeTokens(fs, tokens)
+				if err != nil {
+					return nil, err
 				}
-
+				returnValue.ChildNodes = append(returnValue.ChildNodes, codeNode)
+			default:
+				return nil, fmt.Errorf("%s: unsupported opword %q inside of function", fs.ResolvePosition(token.pos), opWord)
 			}
 
 		} else {
@@ -60,12 +58,32 @@ tokenLoop:
 	return returnValue, nil
 }
 
-func parseCodeToken(fs *FileSet, token *rawToken) (*ast.RawCodeNode, error) {
+func parseCodeTokens(fs *FileSet, tokens *tokenSet) (*ast.RawCodeNode, error) {
 	returnValue := new(ast.RawCodeNode)
+
+	token := tokens.Next()
 	opWord, operand := chopToken(token.cont)
 	if !bytes.Equal(opWord, []byte("code")) {
-		panic("impossible state: cannot parse a code block from something that isn't a code block")
+		panic("impossible state: cannot extract raw code from something that isn't a code block")
 	}
-	returnValue.GoCode = strings.Trim(string(operand), "\n")
+
+	if len(operand) != 0 {
+		return nil, fmt.Errorf("%s: code block declarations cannot contain inline code", fs.ResolvePosition(token.pos))
+	}
+
+	var rawCode []byte
+	for {
+		token := tokens.Next()
+		opword, operand := chopToken(token.cont)
+		if bytes.Equal(opword, []byte("endcode")) {
+			if len(operand) != 0 {
+				return nil, fmt.Errorf("%s: code block declarations cannot contain inline code", fs.ResolvePosition(token.pos))
+			}
+			break
+		}
+		rawCode = append(rawCode, token.cont...)
+	}
+
+	returnValue.GoCode = strings.Trim(string(rawCode), "\n")
 	return returnValue, nil
 }

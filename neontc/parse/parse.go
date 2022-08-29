@@ -73,13 +73,13 @@ func File(fs *FileSet, fpath string, input []byte) (*ast.TemplateFile, error) {
 				}
 				tf.Nodes = append(tf.Nodes, funcDecl)
 			case "code":
-				codeNode, err := parseCodeToken(fs, token)
+				tokens.Rewind()
+				codeNode, err := parseCodeTokens(fs, tokens)
 				if err != nil {
 					return nil, err
 				}
 				tf.Nodes = append(tf.Nodes, codeNode)
 			default:
-				// TODO: error position??
 				return nil, fmt.Errorf("%s: unsupported opword %q", fs.ResolvePosition(token.pos), opWord)
 			}
 

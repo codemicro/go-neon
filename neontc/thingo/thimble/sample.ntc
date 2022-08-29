@@ -1,28 +1,26 @@
-{{bee}}This is a sample Neon template file
+This is a sample Neon template file
 
-{{ code
+{{ code }}
 var Pointless = 42
 type PageInputs struct {
 Name string
 }
-}}
-
-       {{ harumba de mallorca }}
+{{ endcode }}
 
 {{ func MyPage(inputs *PageInputs) }}
 
-    <h1>Hello {{ inputs.Name }}!</h1>
+    <h1>Hello {[ inputs.Name ]}!</h1>
     <p>This was generated using a Neon template.</p>
-    <p>This is a double curly bracket: \{{</p>
-    <p>And now in the other direction!: \}}</p>
+    <p>This is a double bracket: \{[ \{{</p>
+    <p>And now in the other direction!: \]} \}}</p>
 
-    {{ code print("hi") }}
+    {{ code }} print("hi") {{ endcode }}
 
-    {{ code
+    {{ code }}
     type MorePageInputs struct {
         Name string
     }
-    }}
+    {{ endcode }}
 
 {{ endfunc }}
 

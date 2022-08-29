@@ -49,10 +49,10 @@ func tokens(fs *FileSet, positionBase int64, input []byte) (*tokenSet, error) {
 
 	for i, b := range input {
 
-		// Opening sequence: {{
-		if b == '{' && getAtIndex(input, i+1) == '{' && getAtIndex(input, i-1) != '\\' {
+		// Opening sequence: {{ or {[
+		if b == '{' && (getAtIndex(input, i+1) == '{' || getAtIndex(input, i+1) == '[') && getAtIndex(input, i-1) != '\\' {
 			if stage == seekEnd {
-				return nil, fmt.Errorf("%s: new set of opening curlies when searching for closing curlies", fs.ResolvePosition(positionBase+int64(i)))
+				return nil, fmt.Errorf("%s: new set of opening brackets when searching for closing brackets", fs.ResolvePosition(positionBase+int64(i)))
 			}
 
 			output = append(output, &rawToken{positionBase + int64(previousPoint), input[previousPoint:i]})
@@ -62,9 +62,9 @@ func tokens(fs *FileSet, positionBase int64, input []byte) (*tokenSet, error) {
 		}
 
 		// Closing sequence: }}
-		if b == '}' && getAtIndex(input, i-1) == '}' && getAtIndex(input, i-2) != '\\' {
+		if b == '}' && (getAtIndex(input, i-1) == '}' || getAtIndex(input, i-1) == ']') && getAtIndex(input, i-2) != '\\' {
 			if stage == seekStart {
-				return nil, fmt.Errorf("%s: new set of closing curlies when searching for opening curlies", fs.ResolvePosition(positionBase+int64(i-1)))
+				return nil, fmt.Errorf("%s: new set of closing brackets when searching for opening brackets", fs.ResolvePosition(positionBase+int64(i-1)))
 			}
 			output = append(output, &rawToken{positionBase + int64(previousPoint), input[previousPoint : i+1]})
 			stage = seekStart
@@ -74,7 +74,7 @@ func tokens(fs *FileSet, positionBase int64, input []byte) (*tokenSet, error) {
 	}
 
 	if stage == seekEnd {
-		return nil, fmt.Errorf("%s: unclosed opening curlies", fs.ResolvePosition(positionBase+int64(previousPoint)))
+		return nil, fmt.Errorf("%s: unclosed opening brackets", fs.ResolvePosition(positionBase+int64(previousPoint)))
 	}
 
 	// If the input starts or ends with curlies, we will end up with something
