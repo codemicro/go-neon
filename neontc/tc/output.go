@@ -1,6 +1,7 @@
 package tc
 
 import (
+	"fmt"
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/codegen"
 	"github.com/codemicro/go-neon/neontc/util"
@@ -34,6 +35,10 @@ func OutputGeneratorCode(
 				if err := generator.GenerateRawCode(node); err != nil {
 					return err
 				}
+			case *ast.ImportNode:
+				generator.AddPackageImportWithAlias(node.ImportPath, node.Alias)
+			default:
+				panic(fmt.Errorf("unexpected node type %T", node))
 			}
 		}
 

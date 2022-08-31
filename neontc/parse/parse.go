@@ -45,6 +45,15 @@ func chopToken(token []byte) (opWord, operand []byte) {
 	return
 }
 
+func unwrapToken(token []byte) []byte {
+	trimmedToken := bytes.TrimPrefix(
+		bytes.TrimSuffix(token, []byte("}}")),
+		[]byte("{{"),
+	)
+	trimmedToken = bytes.TrimSpace(trimmedToken)
+	return trimmedToken
+}
+
 func File(fs *FileSet, fpath string, input []byte) (*ast.TemplateFile, error) {
 	tf := new(ast.TemplateFile)
 	tf.Filepath = fpath
@@ -79,6 +88,12 @@ func File(fs *FileSet, fpath string, input []byte) (*ast.TemplateFile, error) {
 					return nil, err
 				}
 				tf.Nodes = append(tf.Nodes, codeNode)
+			case "import":
+				importNode, err := parseImportToken(fs, token)
+				if err != nil {
+					return nil, err
+				}
+				tf.Nodes = append(tf.Nodes, importNode)
 			default:
 				return nil, fmt.Errorf("%s: unsupported opword %q", fs.ResolvePosition(token.pos), opWord)
 			}

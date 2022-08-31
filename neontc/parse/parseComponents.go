@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/codemicro/go-neon/neontc/ast"
+	"regexp"
 	"strings"
 )
 
@@ -85,5 +86,24 @@ func parseCodeTokens(fs *FileSet, tokens *tokenSet) (*ast.RawCodeNode, error) {
 	}
 
 	returnValue.GoCode = strings.Trim(string(rawCode), "\n")
+	return returnValue, nil
+}
+
+var importStatementRegexp = regexp.MustCompile(`import (.|[A-Za-z]\w+)? ?"([\w./]+)"`)
+
+func parseImportToken(fs *FileSet, token *rawToken) (*ast.ImportNode, error) {
+	returnValue := new(ast.ImportNode)
+
+	val := unwrapToken(token.cont)
+
+	if !importStatementRegexp.Match(val) {
+		return nil, fmt.Errorf("%s: could not parse import statement", fs.ResolvePosition(token.pos))
+	}
+
+	submatches := importStatementRegexp.FindStringSubmatch(string(val))
+
+	returnValue.Alias = submatches[1]
+	returnValue.ImportPath = submatches[2]
+
 	return returnValue, nil
 }

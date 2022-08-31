@@ -61,7 +61,7 @@ func tokens(fs *FileSet, positionBase int64, input []byte) (*tokenSet, error) {
 			previousPoint = i
 		}
 
-		// Closing sequence: }}
+		// Closing sequence: }} or ]}
 		if b == '}' && (getAtIndex(input, i-1) == '}' || getAtIndex(input, i-1) == ']') && getAtIndex(input, i-2) != '\\' {
 			if stage == seekStart {
 				return nil, fmt.Errorf("%s: new set of closing brackets when searching for opening brackets", fs.ResolvePosition(positionBase+int64(i-1)))

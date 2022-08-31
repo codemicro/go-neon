@@ -29,3 +29,9 @@ type RawCodeNode struct {
 	Pos
 	GoCode string
 }
+
+type ImportNode struct {
+	Pos
+	Alias      string
+	ImportPath string
+}
