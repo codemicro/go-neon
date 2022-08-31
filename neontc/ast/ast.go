@@ -35,3 +35,9 @@ type ImportNode struct {
 	Alias      string
 	ImportPath string
 }
+
+type LoopNode struct {
+	Pos
+	LoopExpression string
+	ChildNodes     []Node
+}

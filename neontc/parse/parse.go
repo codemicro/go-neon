@@ -15,17 +15,13 @@ func getAtIndex[T any](x []T, i int) T {
 }
 
 func chopToken(token []byte) (opWord, operand []byte) {
-	trimmedToken := bytes.TrimPrefix(
-		bytes.TrimSuffix(token, []byte("}}")),
-		[]byte("{{"),
-	)
-	trimmedToken = bytes.TrimSpace(trimmedToken)
+	unwrappedToken := unwrapToken(token)
 
-	firstSpace := bytes.IndexRune(trimmedToken, ' ')
-	firstNewline := bytes.IndexRune(trimmedToken, '\n')
+	firstSpace := bytes.IndexRune(unwrappedToken, ' ')
+	firstNewline := bytes.IndexRune(unwrappedToken, '\n')
 
 	if firstSpace == -1 && firstNewline == -1 {
-		opWord = trimmedToken
+		opWord = unwrappedToken
 	} else {
 		var minimum int
 		if firstSpace == -1 && firstNewline != -1 {
@@ -38,8 +34,8 @@ func chopToken(token []byte) (opWord, operand []byte) {
 			minimum = firstSpace
 		}
 
-		opWord = trimmedToken[:minimum]
-		operand = trimmedToken[minimum+1:]
+		opWord = unwrappedToken[:minimum]
+		operand = unwrappedToken[minimum+1:]
 	}
 
 	return

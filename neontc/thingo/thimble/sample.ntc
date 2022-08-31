@@ -11,6 +11,10 @@ Name string
 
 {{ func MyPage(inputs *PageInputs) }}
 
+    {{ for _, char := range inputs.Name }}
+        <span>{[ char ]}</span>
+    {{ endfor }}
+
     <h1>Hello {[ inputs.Name ]}!</h1>
     <h2>This is {[ bbb.Sprintf("for%s", "matted") ]}</h2>
     <p>This was generated using a Neon template.</p>
