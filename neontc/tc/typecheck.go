@@ -16,6 +16,7 @@ func DetermineSubstitutionTypes(
 	modulePath string,
 	baseDirectory string,
 	files []*ast.TemplateFile,
+	deleteTypecheckingFiles bool,
 ) (map[*ast.SubstitutionNode]types.Type, error) {
 	tempPackageName := util.GenerateRandomIdentifier()
 	tempModulePath := modulePath + "/ntc-tc-" + tempPackageName
@@ -91,7 +92,11 @@ func DetermineSubstitutionTypes(
 		}
 	}
 
-	_ = os.RemoveAll(newDirectory)
+	if deleteTypecheckingFiles {
+		if err := os.RemoveAll(newDirectory); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "warning: could not remove temporary directory %s\n", newDirectory)
+		}
+	}
 
 	return expressionTypes, nil
 }

@@ -2,29 +2,36 @@ package main
 
 import (
 	"fmt"
+	"github.com/alexflint/go-arg"
+	"github.com/codemicro/go-neon/neontc/config"
 	"github.com/codemicro/go-neon/neontc/tc"
-	"log"
 	"os"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("unhandled error: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "unhandled error: %v\n", err)
+		os.Exit(1)
 	}
 }
 
 func run() error {
-	fmt.Println(os.Getenv("GOFILE"))
-	fmt.Println(os.Getenv("GOLINE"))
-	fmt.Println(os.Getenv("GOPACKAGE"))
-	fmt.Println(os.Getenv("GOROOT"))
+	conf := new(config.Config)
+	arg.MustParse(conf)
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
+	if len(conf.Directory) == 0 {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		conf.Directory = cwd
 	}
 
-	if err := tc.RunOnDirectory(cwd); err != nil {
+	if len(conf.OutputDirectory) == 0 {
+		conf.OutputDirectory = conf.Directory
+	}
+
+	if err := tc.RunOnDirectory(conf, conf.Directory); err != nil {
 		return err
 	}
 

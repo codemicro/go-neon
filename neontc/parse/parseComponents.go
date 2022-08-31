@@ -86,7 +86,7 @@ tokenLoop:
 
 	// balance loop starts and ends
 	{
-		// FIFO stack holding the starting positions of each
+		// FIFO stack holding the indexes of each loop node once created
 		var (
 			loopNodePositions []int
 			n                 int

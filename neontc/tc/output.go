@@ -18,6 +18,10 @@ func OutputGeneratorCode(
 	nodeTypes map[*ast.SubstitutionNode]types.Type,
 ) error {
 
+	if err := os.MkdirAll(directory, os.ModeDir); err != nil {
+		return err
+	}
+
 	for _, templateFile := range files {
 		newFilename := filepath.Join(directory, filepath.Base(templateFile.Filepath)) + ".go"
 

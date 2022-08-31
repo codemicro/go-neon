@@ -2,7 +2,6 @@ package util
 
 import (
 	"errors"
-	"fmt"
 	"golang.org/x/mod/modfile"
 	"math/rand"
 	"os"
@@ -20,7 +19,7 @@ var ErrNoGoMod = errors.New("no go.mod file found")
 // each directory until it gets to the root directory, looking in each
 // subsequent dir.
 func FindGoModDir(startDir string) (string, error) {
-	if found, err := doesFileExist("go.mod"); err != nil {
+	if found, err := doesFileExist(filepath.Join(startDir, "go.mod")); err != nil {
 		return "", err
 	} else if found {
 		return startDir, nil
@@ -32,7 +31,6 @@ func FindGoModDir(startDir string) (string, error) {
 	}
 
 	pathComponents := strings.Split(filepath.ToSlash(absStartDir), "/")
-	fmt.Println(pathComponents)
 	for i := len(pathComponents) - 1; i > 0; i -= 1 {
 		dir := strings.Join(pathComponents[0:i], string(os.PathSeparator))
 
