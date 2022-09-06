@@ -177,13 +177,19 @@ func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID stri
 			}
 		}
 
+		var kind types.BasicKind
+
 		if basicType == nil {
-			return fmt.Errorf("%s: unsupported type %s", fs.ResolvePosition(int64(node.Pos)), underlyingType.String())
+			if !types.ConvertibleTo(underlyingType, types.Typ[types.String]) {
+				return fmt.Errorf("%s: unsupported type %s", fs.ResolvePosition(int64(node.Pos)), underlyingType.String())
+			}
+		} else {
+			kind = basicType.Kind()
 		}
 
 		starter := "_, _ = %s.WriteString("
 
-		switch basicType.Kind() {
+		switch kind {
 		case types.Int:
 			fallthrough
 		case types.Int8:
@@ -218,7 +224,7 @@ func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID stri
 			starter += g.getImportName("html") + ".EscapeString(%s)"
 
 		default:
-			return fmt.Errorf("%s unsupported type %s", fs.ResolvePosition(int64(node.Pos)), basicType.Name())
+			starter += g.getImportName("html") + ".EscapeString(string(%s))"
 		}
 
 		// Strings will need HTTP escaping applied to them.
