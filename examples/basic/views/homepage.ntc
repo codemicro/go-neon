@@ -1,0 +1,24 @@
+{{ import "math/rand" }}
+
+{{ func Homepage(name string) }}
+    <html>
+    <head>
+        <title>Hello!</title>
+    </head>
+    <body>
+
+        {{ code }}
+        var seed int64
+        for _, char := range name {
+            seed *= 10
+            seed += int64(char)
+        }
+        rng := rand.New(rand.NewSource(seed))
+        {{ endcode }}
+
+        <h1>Hello {[ name ]}!<h1>
+        <p>Here's your lucky number: {[ rng.Intn(100) ]}</p>
+
+    </body>
+    </html>
+{{ endfunc }}

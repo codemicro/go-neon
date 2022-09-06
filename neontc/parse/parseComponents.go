@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var funcSignatureRegexp = regexp.MustCompile(`(\(\w+ \*?\w+?\) )?(\w+)(\[(?:\w+ \w+,? ?)+\])?(\((?:\w+ \*?\w+,? ?)*\)) ?(\w+|\((?:\*?\w+,? ?)+\))?`)
+var funcSignatureRegexp = regexp.MustCompile(`(\(\w+ \*?\[?\]?\w+?\) )?(\w+)(\[(?:\w+ \*?\[?\]?\w+,? ?)+\])?(\((?:\w+ \*?\[?\]?\w+,? ?)*\)) ?(\[?\]?\w+|\((?:\*?\[?\]?\w+,? ?)+\))?`)
 
 func parseFuncTokens(fs *FileSet, tokens *tokenSet) (*ast.FuncDeclNode, error) {
 	returnValue := new(ast.FuncDeclNode)
@@ -37,6 +37,21 @@ func parseFuncTokens(fs *FileSet, tokens *tokenSet) (*ast.FuncDeclNode, error) {
 			expr string
 		}
 		loopEnd struct {
+			pos int64
+		}
+
+		ifStart struct {
+			pos  int64
+			expr string
+		}
+		elifNode struct {
+			pos  int64
+			expr string
+		}
+		elseNode struct {
+			pos int64
+		}
+		ifEnd struct {
 			pos int64
 		}
 	)
@@ -71,6 +86,14 @@ tokenLoop:
 				returnValue.ChildNodes = append(returnValue.ChildNodes, &loopStart{pos: token.pos, expr: operand})
 			case "endfor":
 				returnValue.ChildNodes = append(returnValue.ChildNodes, &loopEnd{pos: token.pos})
+			case "if":
+				returnValue.ChildNodes = append(returnValue.ChildNodes, &ifStart{pos: token.pos, expr: operand})
+			case "elif":
+				returnValue.ChildNodes = append(returnValue.ChildNodes, &elifNode{pos: token.pos, expr: operand})
+			case "else":
+				returnValue.ChildNodes = append(returnValue.ChildNodes, &elseNode{pos: token.pos})
+			case "endif":
+				returnValue.ChildNodes = append(returnValue.ChildNodes, &ifEnd{pos: token.pos})
 			default:
 				return nil, fmt.Errorf("%s: unsupported opword %q inside of function", fs.ResolvePosition(token.pos), opWord)
 			}
@@ -86,41 +109,106 @@ tokenLoop:
 
 	// balance loop starts and ends
 	{
-		// FIFO stack holding the indexes of each loop node once created
+		// FIFO stack
 		var (
-			loopNodePositions []int
-			n                 int
+			loopNodes   []*ast.LoopNode
+			ifNodes     []*ast.ConditionalNode
+			n           int
+			addToOutput = func(node ast.Node) {
+				var idx int
+
+				if len(loopNodes) != 0 && len(ifNodes) != 0 {
+					lastLoop := loopNodes[len(loopNodes)-1]
+					lastIf := ifNodes[len(ifNodes)-1]
+
+					if lastIf.Pos == lastLoop.Pos {
+						panic("impossible state: if and loop in the same position")
+					} else if lastIf.Pos > lastLoop.Pos {
+						goto addToIf
+					}
+					goto addToLoop
+				} else if len(loopNodes) != 0 {
+					goto addToLoop
+				} else if len(ifNodes) != 0 {
+					goto addToIf
+				} else {
+					goto addToStandard
+				}
+
+			addToIf:
+				idx = len(ifNodes) - 1
+				ifNodes[idx].ChildNodes = append(ifNodes[idx].ChildNodes, node)
+				goto resume
+			addToLoop:
+				idx = len(loopNodes) - 1
+				loopNodes[idx].ChildNodes = append(loopNodes[idx].ChildNodes, node)
+				goto resume
+			addToStandard:
+				returnValue.ChildNodes[n] = node
+				n += 1
+			resume:
+			}
 		)
+
 		for _, node := range returnValue.ChildNodes {
 			switch typedNode := node.(type) {
 			case *loopStart:
-				returnValue.ChildNodes[n] = &ast.LoopNode{
+				newNode := &ast.LoopNode{
 					Pos:            ast.Pos(typedNode.pos),
 					LoopExpression: typedNode.expr,
 					ChildNodes:     nil,
 				}
-				loopNodePositions = append(loopNodePositions, n)
-				n += 1
+
+				addToOutput(newNode)
+				loopNodes = append(loopNodes, newNode)
 			case *loopEnd:
-				if len(loopNodePositions) == 0 {
+				if len(loopNodes) == 0 {
 					return nil, fmt.Errorf("%s: unexpected endfor", fs.ResolvePosition(typedNode.pos))
 				}
-				loopNodePositions = loopNodePositions[:len(loopNodePositions)-1]
-			default:
-				if len(loopNodePositions) != 0 {
-					idx := loopNodePositions[len(loopNodePositions)-1]
-					returnValue.ChildNodes[idx].(*ast.LoopNode).ChildNodes = append(returnValue.ChildNodes[idx].(*ast.LoopNode).ChildNodes, node)
-				} else {
-					returnValue.ChildNodes[n] = node
-					n += 1
+				loopNodes = loopNodes[:len(loopNodes)-1]
+			case *ifStart:
+				newNode := &ast.ConditionalNode{
+					Pos:        ast.Pos(typedNode.pos),
+					Expression: typedNode.expr,
 				}
+
+				addToOutput(newNode)
+				ifNodes = append(ifNodes, newNode)
+			case *elifNode:
+				if len(ifNodes) == 0 {
+					return nil, fmt.Errorf("%s: elif without parent if statement", fs.ResolvePosition(typedNode.pos))
+				}
+				newNode := &ast.ConditionalNode{
+					Pos:        ast.Pos(typedNode.pos),
+					Expression: typedNode.expr,
+				}
+				idx := len(ifNodes) - 1
+				ifNodes[idx].Else = newNode
+				ifNodes[idx] = newNode
+			case *elseNode:
+				if len(ifNodes) == 0 {
+					return nil, fmt.Errorf("%s: else without parent if statement", fs.ResolvePosition(typedNode.pos))
+				}
+				newNode := &ast.ConditionalNode{
+					Pos: ast.Pos(typedNode.pos),
+				}
+				idx := len(ifNodes) - 1
+				ifNodes[idx].Else = newNode
+				ifNodes[idx] = newNode
+			case *ifEnd:
+				if len(ifNodes) == 0 {
+					return nil, fmt.Errorf("%s: unexpected ifend", fs.ResolvePosition(typedNode.pos))
+				}
+				ifNodes = ifNodes[:len(ifNodes)-1]
+			default:
+				addToOutput(node)
 			}
 		}
-		if len(loopNodePositions) != 0 {
+		if len(loopNodes) != 0 {
 			return nil, fmt.Errorf(
 				"%s: unclosed for statement",
 				fs.ResolvePosition(
-					int64(returnValue.ChildNodes[loopNodePositions[len(loopNodePositions)-1]].(*ast.LoopNode).Pos),
+					int64(loopNodes[len(loopNodes)-1].Pos),
 				),
 			)
 		}

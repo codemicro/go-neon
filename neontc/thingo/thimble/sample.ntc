@@ -1,0 +1,42 @@
+This is a sample Neon template file
+
+{{ import bbb "fmt" }}
+
+{{ code }}
+var Pointless = 42
+type PageInputs struct {
+Name string
+}
+{{ endcode }}
+
+{{ func MyPage(inputs *PageInputs) }}
+
+    {{ if true == false }}
+    ok
+    {{ elif true != false }}
+    what
+    {{ else }}
+    hmmm
+    {{ endif }}
+
+    {{ for _, char := range inputs.Name }}
+        <span>{[ char ]}</span>
+    {{ endfor }}
+
+    <h1>Hello {[ inputs.Name ]}!</h1>
+    <h2>This is {[ bbb.Sprintf("for%s", "matted") ]}</h2>
+    <p>This was generated using a Neon template.</p>
+    <p>This is a double bracket: \{[ \{{</p>
+    <p>And now in the other direction!: \]} \}}</p>
+
+    {{ code }} print("hi") {{ endcode }}
+
+    {{ code }}
+    type MorePageInputs struct {
+        Name string
+    }
+    {{ endcode }}
+
+{{ endfunc }}
+
+Other things

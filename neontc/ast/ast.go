@@ -41,3 +41,10 @@ type LoopNode struct {
 	LoopExpression string
 	ChildNodes     []Node
 }
+
+type ConditionalNode struct {
+	Pos
+	Expression string
+	ChildNodes []Node
+	Else       *ConditionalNode
+}

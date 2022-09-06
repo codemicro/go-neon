@@ -70,6 +70,49 @@ func (g *Generator) generateTypecheckingNode(node ast.Node, ids *map[string]*ast
 		if err != nil {
 			return err
 		}
+	case *ast.ConditionalNode:
+		currentNode := node
+
+		for currentNode != nil {
+			{
+				var x string
+				if currentNode == node {
+					// This is the first if node
+					x = "if " + currentNode.Expression + " {\n"
+				} else {
+					x = "else"
+					if currentNode.Expression != "" {
+						x += " if " + currentNode.Expression
+					}
+					x += " {\n"
+				}
+
+				_, err := g.builder.WriteString(x)
+				if err != nil {
+					return err
+				}
+
+			}
+
+			for _, childNode := range currentNode.ChildNodes {
+				if err := g.generateTypecheckingNode(childNode, ids); err != nil {
+					return err
+				}
+			}
+
+			_, err := g.builder.WriteString("} ")
+			if err != nil {
+				return err
+			}
+
+			currentNode = currentNode.Else
+		}
+
+		_, err := g.builder.WriteRune('\n')
+		if err != nil {
+			return err
+		}
+
 	default:
 		panic(fmt.Errorf("unexpected node type %T", node))
 	}
@@ -149,7 +192,7 @@ func (g *Generator) generateNode(node ast.Node, writerID string, nodeTypes map[*
 		case types.Int32:
 			fallthrough
 		case types.Int64:
-			starter += g.getImportName("strconv") + ".FormatInt(int64(%s), 2)"
+			starter += g.getImportName("strconv") + ".FormatInt(int64(%s), 10)"
 
 		case types.Uint:
 			fallthrough
@@ -160,7 +203,7 @@ func (g *Generator) generateNode(node ast.Node, writerID string, nodeTypes map[*
 		case types.Uint32:
 			fallthrough
 		case types.Uint64:
-			starter += g.getImportName("strconv") + ".FormatUint(uint64(%s), 2)"
+			starter += g.getImportName("strconv") + ".FormatUint(uint64(%s), 10)"
 
 		case types.Float32:
 			starter += g.getImportName("strconv") + ".FormatFloat(float64(%s), 'f', -1, 32)"
@@ -193,6 +236,48 @@ func (g *Generator) generateNode(node ast.Node, writerID string, nodeTypes map[*
 			}
 		}
 		_, err = g.builder.WriteString("}\n")
+		if err != nil {
+			return err
+		}
+	case *ast.ConditionalNode:
+		currentNode := node
+
+		for currentNode != nil {
+			{
+				var x string
+				if currentNode == node {
+					// This is the first if node
+					x = "if " + currentNode.Expression + " {\n"
+				} else {
+					x = "else"
+					if currentNode.Expression != "" {
+						x += " if " + currentNode.Expression
+					}
+					x += " {\n"
+				}
+
+				_, err := g.builder.WriteString(x)
+				if err != nil {
+					return err
+				}
+
+			}
+
+			for _, childNode := range currentNode.ChildNodes {
+				if err := g.generateNode(childNode, writerID, nodeTypes); err != nil {
+					return err
+				}
+			}
+
+			_, err := g.builder.WriteString("} ")
+			if err != nil {
+				return err
+			}
+
+			currentNode = currentNode.Else
+		}
+
+		_, err := g.builder.WriteRune('\n')
 		if err != nil {
 			return err
 		}
