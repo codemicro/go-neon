@@ -91,7 +91,7 @@ func RunOnDirectory(conf *config.Config, directory string) error {
 
 	_, _ = fmt.Fprintf(os.Stderr, "Generating output in %s\n", conf.OutputDirectory)
 
-	if err := OutputGeneratorCode(conf.Package, conf.OutputDirectory, files, subsitutionTypes); err != nil {
+	if err := OutputGeneratorCode(fset, conf.Package, conf.OutputDirectory, files, subsitutionTypes); err != nil {
 		return err
 	}
 

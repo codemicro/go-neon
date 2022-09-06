@@ -3,6 +3,7 @@ package codegen
 import (
 	"fmt"
 	"github.com/codemicro/go-neon/neontc/ast"
+	"github.com/codemicro/go-neon/neontc/parse"
 	"github.com/codemicro/go-neon/neontc/util"
 	"go/types"
 	"math/rand"
@@ -119,7 +120,7 @@ func (g *Generator) generateTypecheckingNode(node ast.Node, ids *map[string]*ast
 	return nil
 }
 
-func (g *Generator) GenerateFunction(funcDecl *ast.FuncDeclNode, nodeTypes map[*ast.SubstitutionNode]types.Type) error {
+func (g *Generator) GenerateFunction(fs *parse.FileSet, funcDecl *ast.FuncDeclNode, nodeTypes map[*ast.SubstitutionNode]types.Type) error {
 	var i int64
 	for _, char := range funcDecl.Signature {
 		i += int64(char)
@@ -137,7 +138,7 @@ func (g *Generator) GenerateFunction(funcDecl *ast.FuncDeclNode, nodeTypes map[*
 	}
 
 	for _, childNode := range funcDecl.ChildNodes {
-		if err := g.generateNode(childNode, writerID, nodeTypes); err != nil {
+		if err := g.generateNode(fs, childNode, writerID, nodeTypes); err != nil {
 			return err
 		}
 	}
@@ -149,7 +150,7 @@ func (g *Generator) GenerateFunction(funcDecl *ast.FuncDeclNode, nodeTypes map[*
 	return nil
 }
 
-func (g *Generator) generateNode(node ast.Node, writerID string, nodeTypes map[*ast.SubstitutionNode]types.Type) error {
+func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID string, nodeTypes map[*ast.SubstitutionNode]types.Type) error {
 	switch node := node.(type) {
 	case *ast.PlaintextNode:
 		q := fmt.Sprintf("_, _ = %s.WriteString(%q)\n", writerID, node.Plaintext)
@@ -177,7 +178,7 @@ func (g *Generator) generateNode(node ast.Node, writerID string, nodeTypes map[*
 		}
 
 		if basicType == nil {
-			return fmt.Errorf("unsupported type %s", underlyingType.String())
+			return fmt.Errorf("%s: unsupported type %s", fs.ResolvePosition(int64(node.Pos)), underlyingType.String())
 		}
 
 		starter := "_, _ = %s.WriteString("
@@ -217,7 +218,7 @@ func (g *Generator) generateNode(node ast.Node, writerID string, nodeTypes map[*
 			starter += g.getImportName("html") + ".EscapeString(%s)"
 
 		default:
-			return fmt.Errorf("unsupported type %s", basicType.Name())
+			return fmt.Errorf("%s unsupported type %s", fs.ResolvePosition(int64(node.Pos)), basicType.Name())
 		}
 
 		// Strings will need HTTP escaping applied to them.
@@ -231,7 +232,7 @@ func (g *Generator) generateNode(node ast.Node, writerID string, nodeTypes map[*
 			return err
 		}
 		for _, childNode := range node.ChildNodes {
-			if err := g.generateNode(childNode, writerID, nodeTypes); err != nil {
+			if err := g.generateNode(fs, childNode, writerID, nodeTypes); err != nil {
 				return err
 			}
 		}
@@ -264,7 +265,7 @@ func (g *Generator) generateNode(node ast.Node, writerID string, nodeTypes map[*
 			}
 
 			for _, childNode := range currentNode.ChildNodes {
-				if err := g.generateNode(childNode, writerID, nodeTypes); err != nil {
+				if err := g.generateNode(fs, childNode, writerID, nodeTypes); err != nil {
 					return err
 				}
 			}

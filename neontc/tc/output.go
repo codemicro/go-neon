@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/codegen"
+	"github.com/codemicro/go-neon/neontc/parse"
 	"github.com/codemicro/go-neon/neontc/util"
 	"go/format"
 	"go/types"
@@ -12,6 +13,7 @@ import (
 )
 
 func OutputGeneratorCode(
+	fs *parse.FileSet,
 	packageName string,
 	directory string,
 	files []*ast.TemplateFile,
@@ -32,7 +34,7 @@ func OutputGeneratorCode(
 		for _, childNode := range templateFile.Nodes {
 			switch node := childNode.(type) {
 			case *ast.FuncDeclNode:
-				if err := generator.GenerateFunction(node, nodeTypes); err != nil {
+				if err := generator.GenerateFunction(fs, node, nodeTypes); err != nil {
 					return err
 				}
 			case *ast.RawCodeNode:
