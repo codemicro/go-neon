@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"myProject/views"
+	"github.com/codemicro/go-neon/examples/basic/views"
 )
 
 func main() {
