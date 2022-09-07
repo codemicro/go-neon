@@ -6,8 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.1.1] - 2022-09-07
+### Fixed
+* When a file extension with more than one part to it (eg `ntc.html`) has been selected, no files would match
+* Any `.go` files present in the input directory are copied into the temporary typechecking directory when performing typechecking in case they're depended on by the templates
+
 ## [0.1.0] - 2022-09-07
 Initial release
 
-[Unreleased]: https://github.com/codemicro/go-neon/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/codemicro/go-neon/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/codemicro/go-neon/releases/tag/v0.1.1
 [0.1.0]: https://github.com/codemicro/go-neon/releases/tag/v0.1.0
