@@ -3,19 +3,27 @@ package tc
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/config"
 	"github.com/codemicro/go-neon/neontc/parse"
 	"github.com/codemicro/go-neon/neontc/util"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 func RunOnDirectory(conf *config.Config, directory string) error {
 
+	if conf.Package == "" {
+		return errors.New("unspecified package - try running with go generate or using the --package flag")
+	}
+
 	var err error
 	directory, err = filepath.Abs(directory)
+	if err != nil {
+		return err
+	}
 
 	// Find and parse module name out of go.mod
 
@@ -50,7 +58,7 @@ func RunOnDirectory(conf *config.Config, directory string) error {
 	// parse those files
 	var files []*ast.TemplateFile
 	for _, de := range dirEntries {
-		if de.IsDir() || !strings.EqualFold(filepath.Ext(de.Name()), "."+conf.FileExtension) {
+		if de.IsDir() || !strings.HasSuffix(de.Name(), "."+conf.FileExtension) {
 			continue
 		}
 
@@ -79,15 +87,12 @@ func RunOnDirectory(conf *config.Config, directory string) error {
 	_, _ = fmt.Fprintf(os.Stderr, "Typechecking %s\n", modulePath+"/"+requiredPathTranslation)
 
 	// generate typechecking package
-	subsitutionTypes, err := DetermineSubstitutionTypes(modulePath+"/"+requiredPathTranslation, directory, files, !conf.KeepTempFiles)
+	subsitutionTypes, err := DetermineSubstitutionTypes(modulePath+"/"+requiredPathTranslation, conf.Package, directory, files, !conf.KeepTempFiles)
 	if err != nil {
 		return err
 	}
 
 	// generate output code
-	if conf.Package == "" {
-		return errors.New("unspecified package - try running with go generate or using the --package flag")
-	}
 
 	_, _ = fmt.Fprintf(os.Stderr, "Generating output in %s\n", conf.OutputDirectory)
 

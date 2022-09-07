@@ -24,7 +24,7 @@ func (g *Generator) GenerateTypecheckingFunction(funcDecl *ast.FuncDeclNode) (ma
 		return nil, err
 	}
 
-	if _, err := g.builder.WriteString(" {\n"); err != nil {
+	if _, err := g.builder.WriteString(" string {\n"); err != nil {
 		return nil, err
 	}
 
@@ -35,7 +35,7 @@ func (g *Generator) GenerateTypecheckingFunction(funcDecl *ast.FuncDeclNode) (ma
 		}
 	}
 
-	if _, err := g.builder.WriteString("\n}\n"); err != nil {
+	if _, err := g.builder.WriteString("return \"\"\n}\n"); err != nil {
 		return nil, err
 	}
 

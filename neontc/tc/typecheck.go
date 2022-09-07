@@ -2,18 +2,22 @@ package tc
 
 import (
 	"fmt"
+	"go/parser"
+	"go/types"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/codegen"
 	"github.com/codemicro/go-neon/neontc/util"
-	"go/parser"
-	"go/types"
 	"golang.org/x/tools/go/loader"
-	"os"
-	"path/filepath"
 )
 
 func DetermineSubstitutionTypes(
 	modulePath string,
+	packageName string,
 	baseDirectory string,
 	files []*ast.TemplateFile,
 	deleteTypecheckingFiles bool,
@@ -26,6 +30,37 @@ func DetermineSubstitutionTypes(
 	newDirectory := filepath.Join(baseDirectory, "ntc-tc-"+tempPackageName)
 	if err := os.MkdirAll(newDirectory, os.ModeDir); err != nil {
 		return nil, err
+	}
+
+	// copy .go files into the temporary directory for typechecking purposes
+	dirEntries, err := os.ReadDir(baseDirectory)
+	if err != nil {
+		return nil, err
+	}
+	for _, de := range dirEntries {
+		if de.IsDir() || !strings.EqualFold(filepath.Ext(de.Name()), ".go") {
+			continue
+		}
+
+		f1, err := os.Open(filepath.Join(baseDirectory, de.Name()))
+		if err != nil {
+			return nil, err
+		}
+
+		f2, err := os.OpenFile(filepath.Join(newDirectory, de.Name()), os.O_CREATE|os.O_WRONLY, 0777)
+		if err != nil {
+			_ = f1.Close()
+			return nil, err
+		}
+
+		_, err = io.Copy(f2, f1)
+
+		_ = f1.Close()
+		_ = f2.Close()
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, templateFile := range files {
@@ -60,7 +95,7 @@ func DetermineSubstitutionTypes(
 			return nil, err
 		}
 
-		renderedBytes, err := generator.Render(tempPackageName)
+		renderedBytes, err := generator.Render(packageName)
 		if err != nil {
 			return nil, err
 		}
