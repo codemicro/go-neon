@@ -11,16 +11,16 @@ import (
 
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/codegen"
+	"github.com/codemicro/go-neon/neontc/config"
 	"github.com/codemicro/go-neon/neontc/util"
 	"golang.org/x/tools/go/loader"
 )
 
 func DetermineSubstitutionTypes(
+	conf *config.Config,
 	modulePath string,
-	packageName string,
 	baseDirectory string,
 	files []*ast.TemplateFile,
-	deleteTypecheckingFiles bool,
 ) (map[*ast.SubstitutionNode]types.Type, error) {
 	tempPackageName := util.GenerateRandomIdentifier()
 	tempModulePath := modulePath + "/ntc-tc-" + tempPackageName
@@ -39,6 +39,12 @@ func DetermineSubstitutionTypes(
 	}
 	for _, de := range dirEntries {
 		if de.IsDir() || !strings.EqualFold(filepath.Ext(de.Name()), ".go") {
+			continue
+		}
+
+		if strings.HasSuffix(de.Name(), "." + conf.FileExtension + ".go") {
+			// ignore files that look like the generated output from Neon
+			// TODO: look for `^// Code generated .*Neon.* DO NOT EDIT\.$`
 			continue
 		}
 
@@ -95,7 +101,7 @@ func DetermineSubstitutionTypes(
 			return nil, err
 		}
 
-		renderedBytes, err := generator.Render(packageName)
+		renderedBytes, err := generator.Render(conf.Package)
 		if err != nil {
 			return nil, err
 		}
@@ -109,9 +115,9 @@ func DetermineSubstitutionTypes(
 
 	// run the things!!!
 
-	conf := loader.Config{ParserMode: parser.ParseComments}
-	conf.Import(tempModulePath)
-	lprog, err := conf.Load()
+	ldconf := loader.Config{ParserMode: parser.ParseComments}
+	ldconf.Import(tempModulePath)
+	lprog, err := ldconf.Load()
 	if err != nil {
 		return nil, err // load error
 	}
@@ -127,7 +133,7 @@ func DetermineSubstitutionTypes(
 		}
 	}
 
-	if deleteTypecheckingFiles {
+	if !conf.KeepTempFiles {
 		if err := os.RemoveAll(newDirectory); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "warning: could not remove temporary directory %s\n", newDirectory)
 		}

@@ -87,7 +87,7 @@ func RunOnDirectory(conf *config.Config, directory string) error {
 	_, _ = fmt.Fprintf(os.Stderr, "Typechecking %s\n", modulePath+"/"+requiredPathTranslation)
 
 	// generate typechecking package
-	subsitutionTypes, err := DetermineSubstitutionTypes(modulePath+"/"+requiredPathTranslation, conf.Package, directory, files, !conf.KeepTempFiles)
+	subsitutionTypes, err := DetermineSubstitutionTypes(conf, modulePath+"/"+requiredPathTranslation, directory, files)
 	if err != nil {
 		return err
 	}
