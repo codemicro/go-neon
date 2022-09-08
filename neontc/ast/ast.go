@@ -12,6 +12,7 @@ type TemplateFile struct {
 type FuncDeclNode struct {
 	Pos
 	Signature  string
+	Identifier string
 	ChildNodes []Node
 }
 

@@ -31,6 +31,8 @@ func parseFuncTokens(fs *FileSet, tokens *tokenSet) (*ast.FuncDeclNode, error) {
 		return nil, fmt.Errorf("%s: functions may not have return values", fs.ResolvePosition(token.pos))
 	}
 
+	returnValue.Identifier = submatches[2]
+
 	type (
 		loopStart struct {
 			pos  int64

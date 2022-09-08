@@ -2,11 +2,13 @@ package codegen
 
 import (
 	"fmt"
+	"go/types"
+	"math/rand"
+	"regexp"
+
 	"github.com/codemicro/go-neon/neontc/ast"
 	"github.com/codemicro/go-neon/neontc/parse"
 	"github.com/codemicro/go-neon/neontc/util"
-	"go/types"
-	"math/rand"
 )
 
 func (g *Generator) GenerateRawCode(rawCodeNode *ast.RawCodeNode) error {
@@ -120,7 +122,7 @@ func (g *Generator) generateTypecheckingNode(node ast.Node, ids *map[string]*ast
 	return nil
 }
 
-func (g *Generator) GenerateFunction(fs *parse.FileSet, funcDecl *ast.FuncDeclNode, nodeTypes map[*ast.SubstitutionNode]types.Type) error {
+func (g *Generator) GenerateFunction(fs *parse.FileSet, funcDecl *ast.FuncDeclNode, nodeTypes map[*ast.SubstitutionNode]types.Type, trustedIdentifiers map[string]struct{}) error {
 	var i int64
 	for _, char := range funcDecl.Signature {
 		i += int64(char)
@@ -138,7 +140,7 @@ func (g *Generator) GenerateFunction(fs *parse.FileSet, funcDecl *ast.FuncDeclNo
 	}
 
 	for _, childNode := range funcDecl.ChildNodes {
-		if err := g.generateNode(fs, childNode, writerID, nodeTypes); err != nil {
+		if err := g.generateNode(fs, childNode, writerID, nodeTypes, trustedIdentifiers); err != nil {
 			return err
 		}
 	}
@@ -150,7 +152,9 @@ func (g *Generator) GenerateFunction(fs *parse.FileSet, funcDecl *ast.FuncDeclNo
 	return nil
 }
 
-func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID string, nodeTypes map[*ast.SubstitutionNode]types.Type) error {
+var funcCallIdentifierRegexp = regexp.MustCompile(`^(\w+)`)
+
+func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID string, nodeTypes map[*ast.SubstitutionNode]types.Type, trustedIdentifiers map[string]struct{}) error {
 	switch node := node.(type) {
 	case *ast.PlaintextNode:
 		q := fmt.Sprintf("_, _ = %s.WriteString(%q)\n", writerID, node.Plaintext)
@@ -189,6 +193,15 @@ func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID stri
 
 		starter := "_, _ = %s.WriteString("
 
+		var trusted bool
+		{
+			if x := funcCallIdentifierRegexp.FindStringSubmatch(node.Expression); len(x) != 0 {
+				if _, found := trustedIdentifiers[x[1]]; found {
+					trusted = true
+				}
+			}
+		}
+
 		switch kind {
 		case types.Int:
 			fallthrough
@@ -221,10 +234,18 @@ func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID stri
 			starter += g.getImportName("strconv") + ".FormatBool(%s)"
 
 		case types.String:
-			starter += g.getImportName("html") + ".EscapeString(%s)"
+			if trusted {
+				starter += "%s"
+			} else {
+				starter += g.getImportName("html") + ".EscapeString(%s)"
+			}
 
 		default:
-			starter += g.getImportName("html") + ".EscapeString(string(%s))"
+			if trusted {
+				starter += "string(%s)"
+			} else {
+				starter += g.getImportName("html") + ".EscapeString(string(%s))"
+			}
 		}
 
 		// Strings will need HTTP escaping applied to them.
@@ -238,7 +259,7 @@ func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID stri
 			return err
 		}
 		for _, childNode := range node.ChildNodes {
-			if err := g.generateNode(fs, childNode, writerID, nodeTypes); err != nil {
+			if err := g.generateNode(fs, childNode, writerID, nodeTypes, trustedIdentifiers); err != nil {
 				return err
 			}
 		}
@@ -271,7 +292,7 @@ func (g *Generator) generateNode(fs *parse.FileSet, node ast.Node, writerID stri
 			}
 
 			for _, childNode := range currentNode.ChildNodes {
-				if err := g.generateNode(fs, childNode, writerID, nodeTypes); err != nil {
+				if err := g.generateNode(fs, childNode, writerID, nodeTypes, trustedIdentifiers); err != nil {
 					return err
 				}
 			}

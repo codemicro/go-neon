@@ -24,6 +24,16 @@ func OutputGeneratorCode(
 		return err
 	}
 
+	otherFuncDecls := make(map[string]struct{})
+	for _, templateFile := range files {
+		for _, childNode := range templateFile.Nodes {
+			if childNode, ok := childNode.(*ast.FuncDeclNode); ok {
+				otherFuncDecls[childNode.Identifier] = struct{}{}
+			}
+		}
+		
+	}
+	
 	for _, templateFile := range files {
 		newFilename := filepath.Join(directory, filepath.Base(templateFile.Filepath)) + ".go"
 
@@ -34,7 +44,8 @@ func OutputGeneratorCode(
 		for _, childNode := range templateFile.Nodes {
 			switch node := childNode.(type) {
 			case *ast.FuncDeclNode:
-				if err := generator.GenerateFunction(fs, node, nodeTypes); err != nil {
+				fmt.Println(node.Identifier)
+				if err := generator.GenerateFunction(fs, node, nodeTypes, otherFuncDecls); err != nil {
 					return err
 				}
 			case *ast.RawCodeNode:
