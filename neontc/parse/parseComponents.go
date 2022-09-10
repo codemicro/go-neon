@@ -63,9 +63,15 @@ tokenLoop:
 
 		if bytes.HasPrefix(token.cont, []byte("{[")) {
 			// This is a substitution (I hope)
+
+			expr := string(token.cont)
+			expr = strings.TrimPrefix(expr, "{[")
+			expr = strings.TrimSuffix(expr, "]}")
+			expr = strings.TrimSpace(expr)
+
 			returnValue.ChildNodes = append(returnValue.ChildNodes, &ast.SubstitutionNode{
 				Pos:        ast.Pos(token.pos),
-				Expression: strings.Trim(string(token.cont), " {}[]"),
+				Expression: expr,
 			})
 		} else if bytes.HasPrefix(token.cont, []byte("{{")) {
 			opWordB, operandB := chopToken(token.cont)
