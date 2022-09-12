@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 ### Added
 * Ability to mark substitutions as trusted to prevent escaping
+### Fixed
+* Remove debugging statement
 
 ## [0.1.4] - 2022-09-10
 ### Fixed

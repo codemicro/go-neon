@@ -39,7 +39,6 @@ func OutputGeneratorCode(
 		for _, childNode := range templateFile.Nodes {
 			switch node := childNode.(type) {
 			case *ast.FuncDeclNode:
-				fmt.Println(node.Identifier)
 				if err := generator.GenerateFunction(fs, node, nodeTypes); err != nil {
 					return err
 				}
