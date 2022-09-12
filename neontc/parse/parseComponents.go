@@ -255,7 +255,7 @@ func parseCodeTokens(fs *FileSet, tokens *tokenSet) (*ast.RawCodeNode, error) {
 	return returnValue, nil
 }
 
-var importStatementRegexp = regexp.MustCompile(`import (.|[A-Za-z]\w+)? ?"([\w./]+)"`)
+var importStatementRegexp = regexp.MustCompile(`import (.|[A-Za-z]\w*)? ?"([\w./\-]+)"`)
 
 func parseImportToken(fs *FileSet, token *rawToken) (*ast.ImportNode, error) {
 	returnValue := new(ast.ImportNode)
