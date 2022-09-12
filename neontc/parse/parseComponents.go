@@ -63,16 +63,12 @@ tokenLoop:
 
 		if bytes.HasPrefix(token.cont, []byte("{[")) {
 			// This is a substitution (I hope)
+			subToken, err := parseSubsitution(fs, token)
+			if err != nil {
+				return nil, err
+			}
 
-			expr := string(token.cont)
-			expr = strings.TrimPrefix(expr, "{[")
-			expr = strings.TrimSuffix(expr, "]}")
-			expr = strings.TrimSpace(expr)
-
-			returnValue.ChildNodes = append(returnValue.ChildNodes, &ast.SubstitutionNode{
-				Pos:        ast.Pos(token.pos),
-				Expression: expr,
-			})
+			returnValue.ChildNodes = append(returnValue.ChildNodes, subToken)
 		} else if bytes.HasPrefix(token.cont, []byte("{{")) {
 			opWordB, operandB := chopToken(token.cont)
 			opWord, operand := string(opWordB), string(operandB)
@@ -275,6 +271,31 @@ func parseImportToken(fs *FileSet, token *rawToken) (*ast.ImportNode, error) {
 
 	returnValue.Alias = submatches[1]
 	returnValue.ImportPath = submatches[2]
+
+	return returnValue, nil
+}
+
+var substitutionModifierRegexp = regexp.MustCompile(` #([a-zA-Z,]+)$`) // includes support for comma seperated vals
+
+func parseSubsitution(_ *FileSet, token *rawToken) (*ast.SubstitutionNode, error) {
+	returnValue := &ast.SubstitutionNode{
+		Pos: ast.Pos(token.pos),
+	}
+
+	expr := string(token.cont)
+	expr = strings.TrimPrefix(expr, "{[")
+	expr = strings.TrimSuffix(expr, "]}")
+	expr = strings.TrimSpace(expr)
+
+	submatches := substitutionModifierRegexp.FindStringSubmatch(expr)
+	if len(submatches) != 0 {
+		expr = substitutionModifierRegexp.ReplaceAllString(expr, "")
+
+		rawModifier := strings.ToLower(submatches[1])
+		returnValue.Modifier = ast.SubModMapping[rawModifier]
+	}
+
+	returnValue.Expression = expr
 
 	return returnValue, nil
 }

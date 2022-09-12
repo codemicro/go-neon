@@ -16,9 +16,28 @@ type FuncDeclNode struct {
 	ChildNodes []Node
 }
 
+type SubstitutionModifier uint
+
+// If SubModNone and the other submods are in one const block, `iota` will pick up on the zero and start at 1
+
+const SubModNone SubstitutionModifier = 0
+
+const (
+	SubModUnsafe SubstitutionModifier = 1 << iota
+)
+
+func (s SubstitutionModifier) Includes(i SubstitutionModifier) bool {
+	return s&i != 0
+}
+
+var SubModMapping = map[string]SubstitutionModifier{
+	"unsafe": SubModUnsafe,
+}
+
 type SubstitutionNode struct {
 	Pos
 	Expression string
+	Modifier   SubstitutionModifier
 }
 
 type PlaintextNode struct {

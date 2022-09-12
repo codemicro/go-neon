@@ -10,7 +10,10 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+	"regexp"
 )
+
+var funcCallIdentifierRegexp = regexp.MustCompile(`^(\w+)\(.*\)$`)
 
 func OutputGeneratorCode(
 	fs *parse.FileSet,
@@ -24,16 +27,8 @@ func OutputGeneratorCode(
 		return err
 	}
 
-	otherFuncDecls := make(map[string]struct{})
-	for _, templateFile := range files {
-		for _, childNode := range templateFile.Nodes {
-			if childNode, ok := childNode.(*ast.FuncDeclNode); ok {
-				otherFuncDecls[childNode.Identifier] = struct{}{}
-			}
-		}
-		
-	}
-	
+	markTrustedFunctions(files)
+
 	for _, templateFile := range files {
 		newFilename := filepath.Join(directory, filepath.Base(templateFile.Filepath)) + ".go"
 
@@ -45,7 +40,7 @@ func OutputGeneratorCode(
 			switch node := childNode.(type) {
 			case *ast.FuncDeclNode:
 				fmt.Println(node.Identifier)
-				if err := generator.GenerateFunction(fs, node, nodeTypes, otherFuncDecls); err != nil {
+				if err := generator.GenerateFunction(fs, node, nodeTypes); err != nil {
 					return err
 				}
 			case *ast.RawCodeNode:
@@ -80,4 +75,41 @@ func OutputGeneratorCode(
 	}
 
 	return nil
+}
+
+// markTrustedFunctions marks other generated functions as trusted/enables unsafe mode on them
+func markTrustedFunctions(files []*ast.TemplateFile) {
+	var nodesToVisit []ast.Node
+
+	trustedIdentifiers := make(map[string]struct{})
+	for _, templateFile := range files {
+		for _, childNode := range templateFile.Nodes {
+			nodesToVisit = append(nodesToVisit, childNode)
+			if childNode, ok := childNode.(*ast.FuncDeclNode); ok {
+				trustedIdentifiers[childNode.Identifier] = struct{}{}
+			}
+		}
+	}
+
+	for i := 0; i < len(nodesToVisit); i += 1 {
+		node := nodesToVisit[i]
+		switch node := node.(type) {
+		case *ast.SubstitutionNode:
+			submatches := funcCallIdentifierRegexp.FindStringSubmatch(node.Expression)
+			if len(submatches) != 0 {
+				if _, found := trustedIdentifiers[submatches[1]]; found {
+					(*node).Modifier = node.Modifier | ast.SubModUnsafe
+				}
+			}
+		case *ast.FuncDeclNode:
+			nodesToVisit = append(nodesToVisit, node.ChildNodes...)
+		case *ast.LoopNode:
+			nodesToVisit = append(nodesToVisit, node.ChildNodes...)
+		case *ast.ConditionalNode:
+			nodesToVisit = append(nodesToVisit, node.ChildNodes...)
+			if node.Else != nil {
+				nodesToVisit = append(nodesToVisit, node.Else)
+			}
+		}
+	}
 }
